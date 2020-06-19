@@ -4,6 +4,7 @@ Created on Jun 16, 2020
 @author: Vasyalisk
 '''
 from flask import Flask, request
+from flask_sqlalchemy import SQLAlchemy
 import requests
 
 import time
@@ -13,9 +14,23 @@ import credentials
 
 
 app = Flask(__name__)
+
 LOGGING = True
 CONNECTION_LOG = 'ConnectionLog.txt'
 
+SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://{username}:{password}@{hostname}/{databasename}".format(
+    username=credentials.DB_USERNAME,
+    password=credentials.DB_PASSWORD,
+    hostname=credentials.DB_HOST_ADDRESS,
+    databasename=credentials.DB_NAME,
+)
+
+# Custom configuration parameters for application
+app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
+app.config["SQLALCHEMY_POOL_RECYCLE"] = 299 # Server-dependent timeout for each connection to DB
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
 
 
 @app.route('/', methods=['GET'])

@@ -51,7 +51,7 @@ def add_GET_log_entry():
     '''
     
     with open(CONNECTION_LOG, 'a') as log:
-        server_time = time.strftime('%M:%H, %d\%m\%Y')
+        server_time = time.strftime('%H:%M, %d\%m\%Y')
         entry = '{} GET from : {}\n'.format(server_time, request.url)
         log.write(entry)
     
@@ -83,7 +83,7 @@ def add_POST_log_entry(data_in, data_out):
     
     
     with open(CONNECTION_LOG, 'a') as log:
-        server_time = time.strftime('%M:%H, %d\%m\%Y')
+        server_time = time.strftime('%H:%M, %d\%m\%Y')
         entry = '{} POST; data_in: {}; data_out: {}\n'.format(server_time,
                                                               data_in,
                                                               data_out

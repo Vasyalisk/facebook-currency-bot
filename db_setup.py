@@ -9,6 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 import credentials
 
 
+LOGGING = True
 
 app = Flask(__name__)
 

@@ -15,7 +15,6 @@ import db_setup, credentials
 app = db_setup.app
 db = db_setup.db
 
-LOGGING = True
 CONNECTION_LOG = 'ConnectionLog.txt'
 
 
@@ -39,7 +38,7 @@ def verify_token():
     
     if (token == credentials.VERIFY_TOKEN) and (mode == DEFAULT_MODE):
         
-        if LOGGING:
+        if db_setup.LOGGING:
             add_GET_log_entry()
             
         return response
@@ -72,7 +71,7 @@ def handle_messages():
     text_out = generate_response(text_in)
     data_out = send_message(user_id, text_out)
     
-    if LOGGING:
+    if db_setup.LOGGING:
         add_POST_log_entry(data_in, data_out)
     
     return '200 OK'

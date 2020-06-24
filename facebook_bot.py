@@ -3,10 +3,28 @@ Created on Jun 22, 2020
 
 @author: Vasyalisk
 '''
-import string, enum
+import db_setup
+
+import string, enum, json
 
 
 
+RESPONSE_TEXT_CONF = 'response_text.conf'
+
+with open(RESPONSE_TEXT_CONF) as conf:
+    RESPONSE_TEXT = json.load(conf)
+
+
+@enum.unique
+class ChatStatus(enum.Enum):
+    IDLE = 'IDLE'
+    RATES = 'RATES'
+    EXCHANGE = 'EXCHANGE'
+    HELP = 'HELP'
+    GET_STARTED = 'GET_STARTED'
+    
+
+@enum.unique
 class EventType(enum.Enum):
     '''
     Basic event types from
@@ -22,21 +40,29 @@ class FacebookBot:
     Bot for processing Facebook Messenger requests using API.
     '''
     
-    def __init__(self, data_in):
+    def __init__(self, db, data_in={}):
+        self.db = db
         self.data_in = data_in
-        self.METHODS_MAP = {
-                            EventType.MESSAGES:            self.process_message,
-                            EventType.MESSAGING_POSTBACKS: self.process_postback
-                            } 
     
         
-    def process_events(self):
+    def process_events(self, data_in=None):
+        
+        if data_in is None:
+            data_in = self.data_in
+        else:
+            self.data_in = data_in
+            
         data_out = []
-        entries_in = [e['messaging'][0] for e in self.data_in['entry'] if e]
+        entries_in = [e['messaging'][0] for e in data_in['entry']]
+        
+        METHODS_MAP = {
+                       EventType.MESSAGES:            self.process_message,
+                       EventType.MESSAGING_POSTBACKS: self.process_postback
+                       } 
         
         for entry_in in entries_in:
             e_type = self.get_event_type(entry_in)
-            entry_out = self.METHODS_MAP[e_type](entry_in)
+            entry_out = METHODS_MAP[e_type](entry_in)
             data_out.append(entry_out)
             
         return data_out
@@ -59,8 +85,7 @@ class FacebookBot:
         return e_type
     
     
-    @staticmethod
-    def process_message(entry_in):
+    def process_message(self, entry_in):
         '''
         Echoes message back to user.
         
@@ -73,22 +98,81 @@ class FacebookBot:
         
         user_id = entry_in['sender']['id']
         text_in = entry_in['message']['text']
+        text_out = text_in
+        
+        if '?help' in text_in:
+            text_out = RESPONSE_TEXT['t_help']
+        elif '?codes' in text_in:
+            # TO DO
+            pass
+        elif '?rates' in text_in:
+            text_out = RESPONSE_TEXT['t_rates']
+        elif '?exchange' in text_in:
+            text_out = RESPONSE_TEXT['t_exchange']
         
         entry_out = {
                      'messaging_type': 'RESPONSE',
                      'recipient'     : {'id' : user_id},
-                     'message'       : {'text': text_in}
+                     'message'       : {'text': text_out}
                      }
         
         return entry_out
     
     
-    @staticmethod
-    def process_postback(entry_in):
-        entry_out = entry_in
+    def process_postback(self, entry_in):
+        '''
+        Sends message as a response to postback event. Also updates database's
+        ChatData table.
+        '''
+        
+        user_id = entry_in['sender']['id']
+        payload = entry_in['postback']['payload']
+        response_text = ''
+        
+        if payload == ChatStatus.RATES.value:
+            response_text = RESPONSE_TEXT['t_rates']
+            self.update_chat_data(user_id=user_id, status=ChatStatus.RATES.value)
+        elif payload == ChatStatus.EXCHANGE.value:
+            response_text = RESPONSE_TEXT['t_exchange']
+            self.update_chat_data(user_id=user_id, status=ChatStatus.EXCHANGE.value)
+        elif payload == ChatStatus.HELP.value:
+            response_text = RESPONSE_TEXT['t_help']
+            self.update_chat_data(user_id=user_id, status=ChatStatus.IDLE.value)
+        elif payload == ChatStatus.GET_STARTED.value:
+            # TO DO
+            self.update_chat_data(user_id=user_id, status=ChatStatus.IDLE.value)
+        
+        entry_out = {
+                     'messaging_type': 'RESPONSE',
+                     'recipient'     : {'id' : user_id},
+                     'message'       : {'text': response_text}
+                     }
+            
         return entry_out
     
-
+    
+    def update_chat_data(self, user_id, *, status, **kw):
+        '''
+        Updates entry for each user chat in the database or creates new.
+        '''
+        
+        chat_metadata = '{}'
+        if kw:
+            chat_metadata = json.dumps(kw)
+            
+        entry = self.db.session.query(db_setup.ChatData).get(user_id)
+        
+        if entry is None:
+            new_entry = db_setup.ChatData(user_id=user_id, chat_status=status,
+                                          chat_metadata=chat_metadata)
+            self.db.session.add(new_entry)
+        else:
+            entry.chat_status = status
+            entry.chat_metadata = chat_metadata
+            
+        self.db.session.commit()
+    
+    
 # Deprecated. To be transferred in FacebookBot class
 def generate_response(text_in):
     '''

@@ -14,6 +14,7 @@ import db_setup, facebook_bot, credentials
 
 app = db_setup.app
 db = db_setup.db
+fb_bot = facebook_bot.FacebookBot(db)
 
 CONNECTION_LOG = 'ConnectionLog.txt'
 
@@ -98,8 +99,7 @@ def handle_facebook_events():
 
 
     data_in = request.get_json()
-    bot = facebook_bot.FacebookBot(data_in)
-    data_out = bot.process_events()
+    data_out = fb_bot.process_events(data_in)
     results = _send_response(data_out)
     
     if db_setup.LOGGING:

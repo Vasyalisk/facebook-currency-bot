@@ -5,7 +5,10 @@ Created on Jun 19, 2020
 '''
 import requests
 
-import json, time
+import json, time, os
+
+if __name__ == '__main__':
+    os.chdir('/home/Vasyalisk/webhook/')
 
 from . import db_setup
 from .db_setup import db, CurrencyExchangeRate
@@ -16,7 +19,7 @@ from .db_setup import db, CurrencyExchangeRate
 UPDATE_URL = 'https://open.exchangerate-api.com/v6/latest'
 
 DATA_FILE = 'currency_rates.txt'
-UPDATE_LOG = 'logs\UpdateLog.txt'
+UPDATE_LOG = 'logs/UpdateLog.txt'
 
 
 

@@ -3,7 +3,10 @@ Created on Jun 22, 2020
 
 @author: Vasyalisk
 '''
-import requests
+import requests, os
+
+if __name__ == '__main__':
+    os.chdir('/home/Vasyalisk/webhook/')
 
 from .facebook_bot import ChatStatus
 

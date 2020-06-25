@@ -18,7 +18,7 @@ app = db_setup.app
 db = db_setup.db
 fb_bot = facebook_bot.FacebookBot(db)
 
-CONNECTION_LOG = 'logs//ConnectionLog.txt'
+CONNECTION_LOG = 'logs/ConnectionLog.txt'
 
 
 # Facebook specific API

@@ -20,9 +20,15 @@ class ChatStatus(enum.Enum):
     IDLE = 'IDLE'
     RATES = 'RATES'
     EXCHANGE = 'EXCHANGE'
+    
+
+@enum.unique
+class ChatPayload(enum.Enum):
+    RATES = 'RATES'
+    EXCHANGE = 'EXCHANGE'
     HELP = 'HELP'
     GET_STARTED = 'GET_STARTED'
-    
+
 
 @enum.unique
 class EventType(enum.Enum):
@@ -33,6 +39,7 @@ class EventType(enum.Enum):
     
     MESSAGES = 0
     MESSAGING_POSTBACKS = 1
+
 
 
 class FacebookBot:
@@ -98,17 +105,20 @@ class FacebookBot:
         
         user_id = entry_in['sender']['id']
         text_in = entry_in['message']['text']
-        text_out = text_in
+        text_out = ''
         
         if '?help' in text_in:
             text_out = RESPONSE_TEXT['t_help']
+            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
         elif '?codes' in text_in:
-            # TO DO
-            pass
+            # to do
+            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
         elif '?rates' in text_in:
             text_out = RESPONSE_TEXT['t_rates']
+            self.update_chat_data(user_id, status=ChatStatus.RATES.value)
         elif '?exchange' in text_in:
             text_out = RESPONSE_TEXT['t_exchange']
+            self.update_chat_data(user_id, status=ChatStatus.EXCHANGE.value)
         
         entry_out = {
                      'messaging_type': 'RESPONSE',
@@ -129,18 +139,19 @@ class FacebookBot:
         payload = entry_in['postback']['payload']
         response_text = ''
         
-        if payload == ChatStatus.RATES.value:
+        if payload == ChatPayload.RATES.value:
             response_text = RESPONSE_TEXT['t_rates']
-            self.update_chat_data(user_id=user_id, status=ChatStatus.RATES.value)
-        elif payload == ChatStatus.EXCHANGE.value:
+            # Check the problem with user_id=user_id
+            self.update_chat_data(user_id, status=ChatStatus.RATES.value)
+        elif payload == ChatPayload.EXCHANGE.value:
             response_text = RESPONSE_TEXT['t_exchange']
-            self.update_chat_data(user_id=user_id, status=ChatStatus.EXCHANGE.value)
-        elif payload == ChatStatus.HELP.value:
+            self.update_chat_data(user_id, status=ChatStatus.EXCHANGE.value)
+        elif payload == ChatPayload.HELP.value:
             response_text = RESPONSE_TEXT['t_help']
-            self.update_chat_data(user_id=user_id, status=ChatStatus.IDLE.value)
-        elif payload == ChatStatus.GET_STARTED.value:
+            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
+        elif payload == ChatPayload.GET_STARTED.value:
             # TO DO
-            self.update_chat_data(user_id=user_id, status=ChatStatus.IDLE.value)
+            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
         
         entry_out = {
                      'messaging_type': 'RESPONSE',

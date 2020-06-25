@@ -8,7 +8,9 @@ import requests
 
 import time
 
-import db_setup, facebook_bot, credentials
+from bots import facebook_bot
+from database import db_setup
+from security import credentials
 
 
 
@@ -16,7 +18,7 @@ app = db_setup.app
 db = db_setup.db
 fb_bot = facebook_bot.FacebookBot(db)
 
-CONNECTION_LOG = 'ConnectionLog.txt'
+CONNECTION_LOG = 'logs//ConnectionLog.txt'
 
 
 # Facebook specific API

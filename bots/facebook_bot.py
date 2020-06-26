@@ -53,6 +53,9 @@ class FacebookBot:
     
         
     def process_events(self, data_in=None):
+        '''
+        Process supported events from single POST request.
+        '''
         
         if data_in is None:
             data_in = self.data_in
@@ -103,22 +106,19 @@ class FacebookBot:
         https://developers.facebook.com/docs/messenger-platform/reference/send-api
         '''
         
+        
         user_id = entry_in['sender']['id']
         text_in = entry_in['message']['text']
-        text_out = ''
+        text_out = self._process_commands(user_id, text_in)
         
-        if '?help' in text_in:
-            text_out = RESPONSE_TEXT['t_help']
-            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
-        elif '?codes' in text_in:
-            # to do
-            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
-        elif '?rates' in text_in:
-            text_out = RESPONSE_TEXT['t_rates']
-            self.update_chat_data(user_id, status=ChatStatus.RATES.value)
-        elif '?exchange' in text_in:
-            text_out = RESPONSE_TEXT['t_exchange']
-            self.update_chat_data(user_id, status=ChatStatus.EXCHANGE.value)
+        if not text_out:
+            METHODS_MAP = {ChatStatus.IDLE    : self._process_idle,
+                           ChatStatus.RATES   : self._process_rates,
+                           ChatStatus.EXCHANGE: self._process_exchange}
+            
+            
+            chat_status = self._get_chat_status(user_id)
+            text_out = METHODS_MAP[chat_status](user_id, text_in)
         
         entry_out = {
                      'messaging_type': 'RESPONSE',
@@ -129,6 +129,152 @@ class FacebookBot:
         return entry_out
     
     
+    def _process_commands(self, user_id, text_in):
+        '''
+        Generates response to predefined chat commands. 
+        '''
+        
+        text_out = ''
+        
+        if '?help' in text_in:
+            text_out = RESPONSE_TEXT['t_help']
+            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+        elif '?codes' in text_in:
+            # to do
+            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+        elif '?rates' in text_in:
+            text_out = RESPONSE_TEXT['t_rates']
+            self.update_chat_data(user_id, status=ChatStatus.RATES)
+        elif '?exchange' in text_in:
+            text_out = RESPONSE_TEXT['t_exchange']
+            self.update_chat_data(user_id, status=ChatStatus.EXCHANGE)
+        elif '?start' in text_in:
+            # to do
+            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+            
+        return text_out
+    
+    
+    def _process_idle(self, user_id, text_in):
+        '''
+        Processes user input if current chat status is IDLE and generates
+        response.
+        '''
+        
+        text_out = RESPONSE_TEXT['t_idle_err']
+        self.update_chat_data(user_id, status=ChatStatus.IDLE)
+            
+        return text_out
+    
+    
+    def _process_rates(self, user_id, text_in):
+        '''
+        Processes user input if current chat status is RATES and generates
+        response.
+        '''
+        
+        code1, code2 = self._strip_codes(text_in)
+        rate1, rate2 = self._get_code_rate(code1), self._get_code_rate(code2) 
+        
+        if rate1 and rate2:
+            am1 = '{:.2f}'.format(rate2 / rate1)
+            am2 = '{:.2f}'.format(rate1 / rate2)
+            params = code1, am1, code2, code2, am2, code1
+            text_out = RESPONSE_TEXT['t_rates_resp'].format(*params)
+            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+        else:
+            text_out = RESPONSE_TEXT['t_rates_err']
+        
+        return text_out
+            
+    
+    def _process_exchange(self, user_id, text_in):
+        '''
+        Processes user input if current chat status is EXCHANGE and generates
+        response.
+        '''
+        
+        code1, code2 = self._strip_codes(text_in)
+        am0 = self._strip_number(text_in)
+        rate1, rate2 = self._get_code_rate(code1), self._get_code_rate(code2)
+        
+        if rate1 and rate2 and (am0 is not None):
+            am1 = '{:.2f}'.format(rate2 * am0 / rate1)
+            am2 = '{:.2f}'.format(rate1 * am0 / rate2)
+            params = am0, code1, am1, code2, am0, code2, am2, code1
+            text_out = RESPONSE_TEXT['t_exchange_resp'].format(*params)
+            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+        else:
+            text_out = RESPONSE_TEXT['t_exchange_err']
+            
+        return text_out
+    
+    
+    def _strip_code(self,text):
+        '''
+        Returns first 3-letter substring from text, which is separated by
+        non-letter from both sides.
+        '''
+        
+        code = ''
+        code_length = 3
+        n = 0
+        
+        for n, symbol in enumerate(text):
+            if symbol in string.ascii_letters:
+                code += symbol
+                if len(code) == code_length:
+                    break
+            else:
+                code = ''
+        else:
+            code = code if len(code) == code_length else ''
+        
+        try:
+            suff = text[n+1]
+        except IndexError:
+            suff = ' '
+        
+        if suff in string.ascii_letters:
+            code = self._strip_code(text[n+1:])
+            
+        return code.upper()
+    
+    
+    def _strip_codes(self, text):
+        '''
+        Returns first two 3-letter substrings from text, which are separated by
+        non-letter from both sides each.
+        '''
+        
+        code1 = self._strip_code(text)
+        sep = text.upper().find(code1) + len(code1)
+        
+        if code1 and sep < len(text):
+            code2 = self._strip_code(text[sep:])
+        else:
+            code2 = ''
+            
+        return code1.upper(), code2.upper()
+    
+    
+    def _strip_number(self, text):
+        '''
+        Returns first integer in text.
+        '''
+        
+        digits = '0123456789'
+        number = ''
+        
+        for symbol in text:
+            if symbol in digits:
+                number += symbol
+            elif number:
+                break
+        
+        return int(number) if number else None
+    
+    
     def process_postback(self, entry_in):
         '''
         Sends message as a response to postback event. Also updates database's
@@ -137,26 +283,22 @@ class FacebookBot:
         
         user_id = entry_in['sender']['id']
         payload = entry_in['postback']['payload']
-        response_text = ''
+        text_out = ''
         
         if payload == ChatPayload.RATES.value:
-            response_text = RESPONSE_TEXT['t_rates']
-            # Check the problem with user_id=user_id
-            self.update_chat_data(user_id, status=ChatStatus.RATES.value)
+            text_out = self._process_commands(user_id, '?rates')
         elif payload == ChatPayload.EXCHANGE.value:
-            response_text = RESPONSE_TEXT['t_exchange']
-            self.update_chat_data(user_id, status=ChatStatus.EXCHANGE.value)
+            text_out = self._process_commands(user_id, '?exchange')
         elif payload == ChatPayload.HELP.value:
-            response_text = RESPONSE_TEXT['t_help']
-            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
+            text_out = self._process_commands(user_id, '?help')
         elif payload == ChatPayload.GET_STARTED.value:
             # TO DO
-            self.update_chat_data(user_id, status=ChatStatus.IDLE.value)
+            text_out = self._process_commands(user_id, '?start')
         
         entry_out = {
                      'messaging_type': 'RESPONSE',
                      'recipient'     : {'id' : user_id},
-                     'message'       : {'text': response_text}
+                     'message'       : {'text': text_out}
                      }
             
         return entry_out
@@ -174,14 +316,49 @@ class FacebookBot:
         entry = self.db.session.query(db_setup.ChatData).get(user_id)
         
         if entry is None:
-            new_entry = db_setup.ChatData(user_id=user_id, chat_status=status,
+            new_entry = db_setup.ChatData(user_id=user_id,
+                                          chat_status=status.value,
                                           chat_metadata=chat_metadata)
             self.db.session.add(new_entry)
         else:
-            entry.chat_status = status
+            entry.chat_status = status.value
             entry.chat_metadata = chat_metadata
             
         self.db.session.commit()
+        
+    
+    def _get_chat_status(self, user_id):
+        '''
+        Returns ChatStatus enum for current user. If entry does not exist
+        returns ChatStatus.IDLE.
+        '''
+        
+        entry = self.db.session.query(db_setup.ChatData).get(user_id)
+        
+        if entry is None:
+            status = ChatStatus.IDLE
+        else:
+            status = ChatStatus[entry.chat_status]
+            
+        self.db.session.expire_all()
+        return status
+    
+    
+    def _get_code_rate(self, code):
+        '''
+        Returns currency rate for the code if it is in the database. Returns 0
+        otherwise.
+        '''
+        
+        entry = self.db.session.query(db_setup.CurrencyExchangeRate).get(code)
+        
+        if entry is None:
+            rate = 0
+        else:
+            rate = entry.ex_rate
+            
+        self.db.session.expire_all()
+        return rate
     
     
 # Deprecated. To be transferred in FacebookBot class

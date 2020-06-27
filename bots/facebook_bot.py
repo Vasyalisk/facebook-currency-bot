@@ -146,14 +146,14 @@ class FacebookBot:
             status = ChatStatus.CODE
             code = self._strip_code(text_in)
             if code:
-                text_out = self._process_code(user_id, text_in)
+                text_out = self._process_code(text_in)
             else:
                 text_out = RESPONSE_TEXT['t_code']
         elif '?rate' in text_in:
             status = ChatStatus.RATE
             codes = self._strip_codes(text_in)
             if all(codes):
-                text_out = self._process_rates(user_id, text_in)
+                text_out = self._process_rates(text_in)
             else:
                 text_out = RESPONSE_TEXT['t_rate']
         elif '?exch' in text_in:
@@ -161,7 +161,7 @@ class FacebookBot:
             codes = self._strip_codes(text_in)
             amount = self._strip_number(text_in)
             if all(codes) and (amount is not None):
-                text_out = self._process_exchange(user_id, text_in)
+                text_out = self._process_exchange(text_in)
             else:
                 text_out = RESPONSE_TEXT['t_exch']
             

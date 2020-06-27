@@ -6,10 +6,14 @@ Created on Jun 19, 2020
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
+if __name__ == '__main__':
+    import sys
+    sys.path.append('/home/Vasyalisk/webhook/')
+    
 from security import credentials
 
 
-LOGGING = True
+LOGGING = False
 
 app = Flask(__name__)
 
@@ -51,7 +55,7 @@ class ChatData(db.Model):
     
     user_id = db.Column(db.String(512), primary_key=True)
     chat_status = db.Column(db.String(512))
-    chat_metadata = db.Column(db.String(512))
+    last_msg_date = db.Column(db.DateTime)
     
 
 if __name__ == '__main__':

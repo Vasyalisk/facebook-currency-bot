@@ -18,15 +18,15 @@ with open(RESPONSE_TEXT_CONF) as conf:
 @enum.unique
 class ChatStatus(enum.Enum):
     IDLE = 'IDLE'
-    RATES = 'RATES'
-    EXCHANGE = 'EXCHANGE'
+    RATE = 'RATE'
+    EXCH = 'EXCH'
     CODE = 'CODE'
     
 
 @enum.unique
 class ChatPayload(enum.Enum):
-    RATES = 'RATES'
-    EXCHANGE = 'EXCHANGE'
+    RATE = 'RATE'
+    EXCH = 'EXCH'
     HELP = 'HELP'
     GET_STARTED = 'GET_STARTED'
 
@@ -109,18 +109,18 @@ class FacebookBot:
         
         
         user_id = entry_in['sender']['id']
-        text_in = entry_in['message']['text']
+        text_in = entry_in['message']['text'].lower()
         text_out = self._process_commands(user_id, text_in)
         
         if not text_out:
-            METHODS_MAP = {ChatStatus.IDLE    : self._process_idle,
-                           ChatStatus.RATES   : self._process_rates,
-                           ChatStatus.EXCHANGE: self._process_exchange,
-                           ChatStatus.CODE    : self._process_code}
+            METHODS_MAP = {ChatStatus.IDLE: self._process_idle,
+                           ChatStatus.RATE: self._process_rates,
+                           ChatStatus.EXCH: self._process_exchange,
+                           ChatStatus.CODE: self._process_code}
             
             
             chat_status = self._get_chat_status(user_id)
-            text_out = METHODS_MAP[chat_status](user_id, text_in)
+            text_out = METHODS_MAP[chat_status](text_in)
         
         entry_out = {
                      'messaging_type': 'RESPONSE',
@@ -137,40 +137,39 @@ class FacebookBot:
         '''
         
         text_out = ''
+        status = self._get_chat_status(user_id)
         
         if '?help' in text_in:
+            status = ChatStatus.IDLE
             text_out = RESPONSE_TEXT['t_help']
-            self.update_chat_data(user_id, status=ChatStatus.IDLE)
         elif '?code' in text_in:
+            status = ChatStatus.CODE
             code = self._strip_code(text_in)
             if code:
                 text_out = self._process_code(user_id, text_in)
             else:
                 text_out = RESPONSE_TEXT['t_code']
-                self.update_chat_data(user_id, status=ChatStatus.CODE)
-        elif '?rates' in text_in:
+        elif '?rate' in text_in:
+            status = ChatStatus.RATE
             codes = self._strip_codes(text_in)
             if all(codes):
                 text_out = self._process_rates(user_id, text_in)
             else:
-                text_out = RESPONSE_TEXT['t_rates']
-                self.update_chat_data(user_id, status=ChatStatus.RATES)
-        elif '?exchange' in text_in:
+                text_out = RESPONSE_TEXT['t_rate']
+        elif '?exch' in text_in:
+            status = ChatStatus.EXCH
             codes = self._strip_codes(text_in)
             amount = self._strip_number(text_in)
             if all(codes) and (amount is not None):
                 text_out = self._process_exchange(user_id, text_in)
             else:
-                text_out = RESPONSE_TEXT['t_exchange']
-                self.update_chat_data(user_id, status=ChatStatus.EXCHANGE)
-        elif '?start' in text_in:
-            # to do
-            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+                text_out = RESPONSE_TEXT['t_exch']
             
+        self.update_chat_data(user_id, status=status)
         return text_out
     
     
-    def _process_code(self, user_id, text_in):
+    def _process_code(self, text_in):
         '''
         Processes user input if current chat status is CODE and generates
         response.
@@ -181,24 +180,22 @@ class FacebookBot:
             text_out = RESPONSE_TEXT['t_code_resp'].format(code)
         else:
             text_out = RESPONSE_TEXT['t_code_err'].format(code)
-        self.update_chat_data(user_id, status=ChatStatus.IDLE)
         
         return text_out
     
     
-    def _process_idle(self, user_id, text_in):
+    def _process_idle(self, text_in):
         '''
         Processes user input if current chat status is IDLE and generates
         response.
         '''
         
         text_out = RESPONSE_TEXT['t_idle_err']
-        self.update_chat_data(user_id, status=ChatStatus.IDLE)
             
         return text_out
     
     
-    def _process_rates(self, user_id, text_in):
+    def _process_rates(self, text_in):
         '''
         Processes user input if current chat status is RATES and generates
         response.
@@ -211,15 +208,14 @@ class FacebookBot:
             am1 = '{:.2f}'.format(rate2 / rate1)
             am2 = '{:.2f}'.format(rate1 / rate2)
             params = code1, am1, code2, code2, am2, code1
-            text_out = RESPONSE_TEXT['t_rates_resp'].format(*params)
-            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+            text_out = RESPONSE_TEXT['t_rate_resp'].format(*params)
         else:
-            text_out = RESPONSE_TEXT['t_rates_err']
+            text_out = RESPONSE_TEXT['t_rate_err']
         
         return text_out
             
     
-    def _process_exchange(self, user_id, text_in):
+    def _process_exchange(self, text_in):
         '''
         Processes user input if current chat status is EXCHANGE and generates
         response.
@@ -233,10 +229,9 @@ class FacebookBot:
             am1 = '{:.2f}'.format(rate2 * am0 / rate1)
             am2 = '{:.2f}'.format(rate1 * am0 / rate2)
             params = am0, code1, am1, code2, am0, code2, am2, code1
-            text_out = RESPONSE_TEXT['t_exchange_resp'].format(*params)
-            self.update_chat_data(user_id, status=ChatStatus.IDLE)
+            text_out = RESPONSE_TEXT['t_exch_resp'].format(*params)
         else:
-            text_out = RESPONSE_TEXT['t_exchange_err']
+            text_out = RESPONSE_TEXT['t_exch_err']
             
         return text_out
     
@@ -316,15 +311,15 @@ class FacebookBot:
         payload = entry_in['postback']['payload']
         text_out = ''
         
-        if payload == ChatPayload.RATES.value:
-            text_out = self._process_commands(user_id, '?rates')
-        elif payload == ChatPayload.EXCHANGE.value:
-            text_out = self._process_commands(user_id, '?exchange')
+        if payload == ChatPayload.RATE.value:
+            text_out = self._process_commands(user_id, '?rate')
+        elif payload == ChatPayload.EXCH.value:
+            text_out = self._process_commands(user_id, '?exch')
         elif payload == ChatPayload.HELP.value:
             text_out = self._process_commands(user_id, '?help')
         elif payload == ChatPayload.GET_STARTED.value:
-            # TO DO
-            text_out = self._process_commands(user_id, '?start')
+            text_out = RESPONSE_TEXT['t_get_started']
+            self.update_chat_data(user_id, status=ChatStatus.IDLE)
         
         entry_out = {
                      'messaging_type': 'RESPONSE',

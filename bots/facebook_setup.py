@@ -8,7 +8,7 @@ import requests, os
 if __name__ == '__main__':
     os.chdir('/home/Vasyalisk/webhook/')
 
-from .facebook_bot import ChatStatus
+from bots.facebook_bot import ChatPayload, RESPONSE_TEXT
 
 from security import credentials
 
@@ -21,30 +21,26 @@ def set_messenger_profile():
     '''
     
     url = 'https://graph.facebook.com/v7.0/me/messenger_profile'
-    data = {'get_started'    : {'payload': ChatStatus.GET_STARTED.value},
+    data = {'get_started'    : {'payload': ChatPayload.GET_STARTED.value},
             'persistent_menu': [{
                                  'locale': 'default',
                                  'call_to_actions': [{'type': 'postback',
                                                       'title': 'Help',
-                                                      'payload': ChatStatus.HELP.value},
+                                                      'payload': ChatPayload.HELP.value},
                                                       
                                                      {'type': 'postback',
                                                       'title': 'Exchange currency',
-                                                      'payload': ChatStatus.EXCHANGE.value},
+                                                      'payload': ChatPayload.EXCH.value},
                                                      
                                                      {'type': 'postback',
                                                       'title': 'Exchange rates',
-                                                      'payload': ChatStatus.RATES.value}
+                                                      'payload': ChatPayload.RATE.value}
                                                      ]
                                  }
                                 ],
             'greeting'       : [{
                                  'locale': 'default',
-                                 'text'  : ('Welcome! You can use this bot to '
-                                            'obtain different exchange rates as '
-                                            'well as convert currencies. To do '
-                                            'that use the pop-up menu in the '
-                                            'lower corner.')
+                                 'text'  : (RESPONSE_TEXT['t_greeting'])
                                  }]
             }
     token = {'access_token' : credentials.ACCESS_TOKEN}
